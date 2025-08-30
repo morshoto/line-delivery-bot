@@ -10,6 +10,10 @@ export async function initLiff(cfg: AppConfig) {
 
 export async function getGroupIdOrThrow(): Promise<string> {
   if (!liff.isInClient()) {
+    const env = import.meta.env as any;
+    if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+      return env.VITE_DEV_GROUP_ID || 'dev-group-id';
+    }
     throw new Error('LINEアプリ内から開いてください');
   }
   const ctx = liff.getContext();
@@ -21,6 +25,15 @@ export async function getGroupIdOrThrow(): Promise<string> {
 
 export async function getProfileSafe() {
   try {
+    if (!liff.isInClient()) {
+      const env = import.meta.env as any;
+      if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+        return {
+          displayName: env.VITE_DEV_DISPLAY_NAME || 'Dev User',
+          userId: env.VITE_DEV_USER_ID || 'U-dev-user',
+        };
+      }
+    }
     const p = await liff.getProfile();
     return { displayName: p.displayName, userId: p.userId };
   } catch {
@@ -30,6 +43,13 @@ export async function getProfileSafe() {
 
 export async function getAuthHeader(cfg: AppConfig): Promise<Record<string,string>> {
   if (cfg.oidcEnabled) {
+    if (!liff.isInClient()) {
+      const env = import.meta.env as any;
+      if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+        // ブラウザ開発時は ID トークンは付与しない
+        return {};
+      }
+    }
     const idt = await liff.getIDToken();
     return idt ? { Authorization: `Bearer ${idt}` } : {};
   }
