@@ -38,13 +38,18 @@ jobs:
       - name: Get pr description
         id: pr_description
         run: |
-          echo "pr_description=$(curl -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
+          pr_description=$(curl -H 'Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}' \
             'https://api.github.com/repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number}}' \
-            | jq .body | awk '{if ($0 == "null") print ""; else print}')" >> $GITHUB_OUTPUT
+            | jq .body | awk '{if ($0 == "null") print ""; else print}')
+          {
+            echo 'pr_description<<EOF'
+            echo "$pr_description"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Generate release note changes
         id: changes
         run: |
-          echo "changes=$(
+          changes=$(
           curl -X POST \
             -H 'Accept: application/vnd.github.v3+json' \
             -H 'Authorization: token ${{ secrets.GITHUB_TOKEN }}' \
@@ -54,7 +59,12 @@ jobs:
               "previous_tag_name": "${{ steps.pre_tag.outputs.pre_tag }}",
               "target_commitish": "main"
             }' | jq .body
-          )" >> $GITHUB_OUTPUT
+          )
+          {
+            echo 'changes<<EOF'
+            echo "$changes"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
       - name: Create release note body
         id: release_note_body
         run: |
