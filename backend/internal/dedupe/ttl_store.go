@@ -7,7 +7,6 @@ import (
 
 // Store defines an interface for duplicate detection with TTL.
 type Store interface {
-    // Seen returns true if the key has been seen within TTL and refreshes its timestamp.
     Seen(key string) bool
 }
 
@@ -36,7 +35,7 @@ func (s *TTLStore) Seen(key string) bool {
     }
     if t, ok := s.data[key]; ok {
         if now.Sub(t) <= s.ttl {
-            s.data[key] = now // refresh
+            s.data[key] = now
             return true
         }
     }

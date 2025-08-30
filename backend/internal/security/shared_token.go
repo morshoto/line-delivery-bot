@@ -17,11 +17,13 @@ func NewHeaderSharedTokenVerifier(token string) *HeaderSharedTokenVerifier {
 }
 
 func (v *HeaderSharedTokenVerifier) Verify(r *http.Request) error {
-    if v.Token == "" { // not configured -> allow
+    if v.Token == "" { 
+        // not configured -> allow
         return nil
     }
     if r.Header.Get(v.HeaderName) != v.Token {
-        return http.ErrNoCookie // generic error
+        // generic error
+        return http.ErrNoCookie 
     }
     return nil
 }

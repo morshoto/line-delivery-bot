@@ -102,7 +102,8 @@ func (h *Handler) handleScan() http.HandlerFunc {
 func (h *Handler) handleCallback() http.HandlerFunc {
     return func(w http.ResponseWriter, r *http.Request) {
         // Read body for signature verification
-        body := http.MaxBytesReader(w, r.Body, 1<<20) // 1MB cap
+        // 1MB cap
+        body := http.MaxBytesReader(w, r.Body, 1<<20) 
         b, err := io.ReadAll(body)
         if err != nil {
             http.Error(w, "bad request", http.StatusBadRequest)
@@ -122,4 +123,3 @@ func (h *Handler) handleCallback() http.HandlerFunc {
     }
 }
 
-// no additional helpers
