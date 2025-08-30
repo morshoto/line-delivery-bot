@@ -1,20 +1,18 @@
-declare global {
-  interface Window {
-    liff: any;
-  }
-}
-
+import liff from '@line/liff';
 import type { AppConfig } from './env';
 
 export async function initLiff(cfg: AppConfig) {
-  await window.liff?.init({ liffId: cfg.liffId });
-  if (!window.liff?.isInClient()) {
+  await liff.init({ liffId: cfg.liffId });
+  if (!liff.isInClient()) {
     // ブラウザ起動時でも動くが、今回用途は in-app を想定
   }
 }
 
 export async function getGroupIdOrThrow(): Promise<string> {
-  const ctx = window.liff!.getContext();
+  if (!liff.isInClient()) {
+    throw new Error('LINEアプリ内から開いてください');
+  }
+  const ctx = liff.getContext();
   if (ctx.type !== 'group' || !ctx.groupId) {
     throw new Error('グループから開いてください');
   }
@@ -23,7 +21,7 @@ export async function getGroupIdOrThrow(): Promise<string> {
 
 export async function getProfileSafe() {
   try {
-    const p = await window.liff!.getProfile();
+    const p = await liff.getProfile();
     return { displayName: p.displayName, userId: p.userId };
   } catch {
     return { displayName: '', userId: '' };
@@ -32,7 +30,7 @@ export async function getProfileSafe() {
 
 export async function getAuthHeader(cfg: AppConfig): Promise<Record<string,string>> {
   if (cfg.oidcEnabled) {
-    const idt = await window.liff!.getIDToken();
+    const idt = await liff.getIDToken();
     return idt ? { Authorization: `Bearer ${idt}` } : {};
   }
   if (cfg.useSharedToken && cfg.sharedToken) {
