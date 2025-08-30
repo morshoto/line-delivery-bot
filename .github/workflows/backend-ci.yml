@@ -51,7 +51,7 @@ jobs:
         with:
           go-version: ${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}
           cache: true
-      - name: Run gofmt (autofix)
+      - name: Run gofmt
         shell: bash
         run: |
           cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
@@ -60,9 +60,8 @@ jobs:
             echo "Reformatting:"; echo "$CHANGED"
             gofmt -w .
           fi
-
   RunGoVet:
-    needs: [SetGlobalConstants, RunGoFmt]
+    needs: [SetGlobalConstants]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
