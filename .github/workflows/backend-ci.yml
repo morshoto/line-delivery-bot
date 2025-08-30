@@ -1,9 +1,9 @@
-name: Server CI (Go)
+name: Backend CI
 
 on:
   pull_request:
     paths:
-      - 'server/**'
+      - 'backend/**'
 
 concurrency:
   group: ci-go-${{ github.ref }}

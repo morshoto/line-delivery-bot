@@ -1,0 +1,86 @@
+name: PR Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump_level:
+        description: 'Version bump level (major, minor, patch)'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+
+jobs:
+  SetGlobalConstants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+    outputs:
+      APP_NAME: "ip_ellis_scraper"
+      DEVELOP_BRANCH: "dev/main"
+      MAIN_BRANCH: "main"
+      BOT_NAME: "github-actions[bot]"
+      BOT_EMAIL: "github-actions[bot]@users.noreply.github.com"
+      PR_TEMPLATE_PATH: ${{ steps.constants.outputs.PR_TEMPLATE_PATH }}
+    steps:
+      - id: constants
+        run: |
+          echo "PR_TEMPLATE_PATH=.github/PULL_REQUEST_TEMPLATE.md" >> $GITHUB_OUTPUT
+          echo 'Setting constants.'
+
+  CreateDeployPR:
+    needs: SetGlobalConstants
+    timeout-minutes: 5
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout develop branch
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PAT }}
+          ref: ${{ needs.SetGlobalConstants.outputs.DEVELOP_BRANCH }}
+          fetch-depth: 0
+      - name: Fetch main branch
+        run: git fetch origin ${{ needs.SetGlobalConstants.outputs.MAIN_BRANCH }}:${{ needs.SetGlobalConstants.outputs.MAIN_BRANCH }}
+      - name: Bump version and push tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.PAT }}
+          default_bump: ${{ github.event.inputs.bump_level }}
+      - name: Create and push release branch
+        run: |
+          git config --global user.name "${{ needs.SetGlobalConstants.outputs.BOT_NAME }}"
+          git config --global user.email "${{ needs.SetGlobalConstants.outputs.BOT_EMAIL }}"
+          git checkout -b release/${{ steps.tag_version.outputs.new_tag }}
+          git push origin release/${{ steps.tag_version.outputs.new_tag }}
+      - name: Generate changelog
+        id: changelog
+        run: |
+          git fetch --tags
+          LOG=$(git log ${{ steps.tag_version.outputs.previous_tag }}...${{ steps.tag_version.outputs.new_tag }} --pretty=format:"- %s (%h)")
+          if [ -z "$LOG" ]; then
+            LOG="- No changes"
+          fi
+          echo "changes<<EOF" >> $GITHUB_OUTPUT
+          echo "$LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+      - name: Create Draft Pull Request to main
+        env:
+          GH_TOKEN: ${{ secrets.PAT }}
+          CHANGELOG: ${{ steps.changelog.outputs.changes }}
+        run: |
+          PR_TITLE="🚀 Deploy ${{ needs.SetGlobalConstants.outputs.APP_NAME }} ${{ steps.tag_version.outputs.new_tag }}"
+          echo "$CHANGELOG" > changelog.txt
+          BODY_CONTENT=$(sed "s|# Title|# $PR_TITLE|" ${{ needs.SetGlobalConstants.outputs.PR_TEMPLATE_PATH }})
+          FINAL_BODY=$(echo "$BODY_CONTENT" | sed '/## Description/r changelog.txt')
+          gh pr create \
+            --base ${{ needs.SetGlobalConstants.outputs.MAIN_BRANCH }} \
+            --head "release/${{ steps.tag_version.outputs.new_tag }}" \
+            --title "$PR_TITLE" \
+            --body "$FINAL_BODY" \
+            --draft
