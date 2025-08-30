@@ -1,0 +1,39 @@
+name: "💡 Feature Request"  
+description: "Suggest a new feature or an improvement."  
+title: "💡 Feature Request: [Feature title here]"  
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Description of Feature Request
+        <!-- Describe the feature you would like to add. -->
+        <!-- What problem does this feature solve? -->
+        <!-- Clearly explain expected behavior and provide examples. -->
+
+  - type: textarea
+    id: use-case
+    attributes:
+      label: "Use Cases"
+      description: "How do you plan to use this feature?"
+      placeholder: |
+        1. Describe specific scenarios or use cases.
+        2. Clearly explain how this feature will be beneficial.
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional Context"
+      description: "Include relevant information, reference links, or related existing features here."
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: "Screenshots or Mockups"
+      description: "Add screenshots or design mockups related to this feature, if available."
+    validations:
+      required: false

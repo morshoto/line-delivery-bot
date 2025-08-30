@@ -1,0 +1,8 @@
+# Go
+/bin
+/dist
+*.log
+
+# OS
+.DS_Store
+

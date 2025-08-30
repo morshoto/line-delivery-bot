@@ -1,0 +1,183 @@
+name: Server CI (Go)
+
+on:
+  pull_request:
+    paths:
+      - 'server/**'
+
+concurrency:
+  group: ci-go-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  SetGlobalConstants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      TARGET_DIRECTORY: 'server'
+      GO_122_VERSION: '1.22.x'
+      CHECKING_BADGE_COLOR: FFAA00
+      PASSING_BADGE_COLOR: 0088FF
+      RUNNING_OR_FAILING_STATUS: 'running or failed'
+      PASSING_STATUS: 'passing'
+      PASSING_LINTS_BADGE_NAME: go_passing_lints
+      PASSING_LINTS_BADGE_LABEL: 'go passing lints'
+      GO_VERSION_BADGE_NAME: go_versions
+      GO_VERSION_BADGE_LABEL: 'Go versions'
+    steps:
+      - run: echo 'Setting constants.'
+
+  UpdateReadmeBadgesToCheckingStatus:
+    needs: SetGlobalConstants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Update lints badge to checking
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_LABEL }}'
+          status: '${{ needs.SetGlobalConstants.outputs.RUNNING_OR_FAILING_STATUS }}'
+          color: ${{ needs.SetGlobalConstants.outputs.CHECKING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  RunGoFmt:
+    needs: [SetGlobalConstants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}
+          cache: true
+      - name: Run gofmt (autofix)
+        shell: bash
+        run: |
+          cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
+          CHANGED=$(gofmt -l .)
+          if [ -n "$CHANGED" ]; then
+            echo "Reformatting:"; echo "$CHANGED"
+            gofmt -w .
+          fi
+
+  RunGoVet:
+    needs: [SetGlobalConstants, RunGoFmt]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}
+          cache: true
+      - name: Download deps
+        run: |
+          cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
+          go mod download
+      - name: go vet
+        run: |
+          cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
+          go vet ./...
+
+  RunGoTest:
+    needs: [SetGlobalConstants, RunGoFmt, RunGoVet]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+    outputs:
+      COVERAGE: ${{ steps.coverage.outputs.COVERAGE }}
+      PASSING_TESTS_NUM: ${{ steps.tests.outputs.PASSING_TESTS_NUM }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}
+          cache: true
+      - name: Run tests with coverage
+        id: coverage
+        shell: bash
+        run: |
+          cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
+          go test ./... -coverprofile=coverage.out -covermode=atomic -json > gotest.json || true
+          if [ -f coverage.out ]; then
+            COVER=$(go tool cover -func=coverage.out | grep total | awk '{print $3}')
+          else
+            COVER="0%"
+          fi
+          echo "COVERAGE=${COVER}" >> $GITHUB_OUTPUT
+      - name: Extract passing tests count
+        id: tests
+        shell: bash
+        run: |
+          cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
+          if [ -f gotest.json ]; then
+            PASSING=$(grep -o '"Action":"pass"' gotest.json | wc -l | tr -d ' ')
+          else
+            PASSING=0
+          fi
+          echo "PASSING_TESTS_NUM=${PASSING}" >> $GITHUB_OUTPUT
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const coverage = '${{ steps.coverage.outputs.COVERAGE }}';
+            const passing = '${{ steps.tests.outputs.PASSING_TESTS_NUM }}';
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            let previous = null;
+            for (const c of comments.data.reverse()) {
+              if (c.body.includes('Go Coverage:')) {
+                const m = c.body.match(/Go Coverage: (\d+\.\d+%|\d+%)/);
+                if (m && m[1]) { previous = m[1]; break; }
+              }
+            }
+            if (!previous || previous !== coverage) {
+              const body = `## Go Test Results Summary\n\nTests Passed: ${passing}\nGo Coverage: ${coverage}\n[View full test results in the Actions tab](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body
+              });
+            }
+
+  UpdateReadmeBadgesToPassingStatus:
+    needs: [SetGlobalConstants, UpdateReadmeBadgesToCheckingStatus, RunGoFmt, RunGoVet, RunGoTest]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Update lints badge
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_LABEL }}'
+          status: 'gofmt | govet'
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Go tests coverage
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: go_unit_tests_coverage
+          label: 'go unit tests coverage'
+          status: ${{ needs.RunGoTest.outputs.COVERAGE }}
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Go versions badge
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.GO_VERSION_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.GO_VERSION_BADGE_LABEL }}'
+          status: '${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}'
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -1,0 +1,47 @@
+name: "❓ Question or Support Request"
+description: "Ask a question or request support."
+title: "❓ Question: [Briefly describe your question or issue]"
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Question or Support Description
+        <!-- Provide details of your question or describe the support you're requesting. -->
+
+  - type: textarea
+    id: details
+    attributes:
+      label: "Details"
+      description: "Provide context or details necessary to understand your request."
+      placeholder: "Clearly describe your situation, any attempts made to resolve the issue, etc."
+    validations:
+      required: true
+
+  # - type: input
+  #   id: version
+  #   attributes:
+  #     label: "Software/Library Version"
+  #     description: "Specify relevant version details, if applicable."
+  #     placeholder: "e.g., v1.3.2"
+  #   validations:
+  #     required: false
+
+  # - type: textarea
+  #   id: environment
+  #   attributes:
+  #     label: "Environment"
+  #     description: "Provide relevant environment details (operating system, browser, etc.)"
+  #     placeholder: |
+  #       - OS: e.g., macOS Ventura
+  #       - Browser: e.g., Safari 17.0
+    # validations:
+    #   required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: "Additional Context or Attachments"
+      description: "Add additional context, links, or attachments."
+    validations:
+      required: false

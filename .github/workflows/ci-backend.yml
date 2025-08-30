@@ -1,0 +1,430 @@
+name: Backend CI
+
+on:
+  pull_request:
+    paths:
+      - 'backend/src/**'
+
+jobs:
+  SetGlobalConstants:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      TARGET_DIRECTORY: 'backend'
+      PYTHON_312_VERSION: 3.12.0
+      # PYTHON_313_VERSION: 3.13.0
+      CHECKING_BADGE_COLOR: FFAA00
+      PASSING_BADGE_COLOR: 0088FF
+      RUNNING_OR_FAILING_STATUS: running or failed
+      PASSING_STATUS: passing
+      PASSING_LINTS_BADGE_NAME: passing_lints
+      PASSING_LINTS_BADGE_LABEL: 'passing lints'
+      PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_NAME: passing_unit_test_python_versions
+      PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_LABEL: 'passing unit tests Python versions'
+    steps:
+      - run: echo 'Setting constants.'
+
+  CreateCache:
+    needs: SetGlobalConstants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+      id-token: write
+    strategy:
+      matrix:
+        python-version: [
+          '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}',
+          # '${{ needs.SetGlobalConstants.outputs.PYTHON_313_VERSION }}',
+        ]
+    steps:
+      - uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.DB_SCHEMA_SSH_PRIVATE_KEY }}
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Auth to GCP via Workload Identity Federation
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+      - name: Configure pip for Artifact Registry (job-wide)
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(gcloud auth print-access-token)"
+          mkdir -p "$HOME/.config/pip"
+          cat > "$HOME/.config/pip/pip.conf" <<EOF
+          [global]
+          index-url = https://pypi.org/simple
+          extra-index-url = https://oauth2accesstoken:${TOKEN}@asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          EOF
+      - name: CreateCache
+        uses: ./.github/actions/create_env_cache
+        with:
+          python-version: ${{ matrix.python-version }}
+          TARGET_DIRECTORY: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+
+  UpdateReadmeBadgesToCheckingStatus:
+    needs: SetGlobalConstants
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Update each lint badge status to running or failing
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_LABEL }}'
+          status: '${{ needs.SetGlobalConstants.outputs.RUNNING_OR_FAILING_STATUS }}'
+          color: ${{ needs.SetGlobalConstants.outputs.CHECKING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update the passing unit tests Python versions status
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_LABEL }}'
+          status: '${{ needs.SetGlobalConstants.outputs.RUNNING_OR_FAILING_STATUS }}'
+          color: ${{ needs.SetGlobalConstants.outputs.CHECKING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+
+  RunFlake8:
+    needs: [CreateCache, SetGlobalConstants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # for WIF
+    # strategy:
+    #   matrix:
+    #     target-directory: ${{ fromJson(needs.SetGlobalConstants.outputs.TARGET_DIRECTORIES) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Lint with flake8
+        run: python flake8 . || true
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+  RunIsort:
+    needs: [CreateCache, SetGlobalConstants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # for WIF
+    # strategy:
+    #   matrix:
+    #     target-directory: ${{ fromJson(needs.SetGlobalConstants.outputs.TARGET_DIRECTORIES) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Install isort
+        run: pip install isort
+      - name: Lint with isort
+        run: isort . --check-only || isort .
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+  RunBlack:
+    needs: [CreateCache, SetGlobalConstants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # for WIF
+    # strategy:
+    #   matrix:
+    #     target-directory: ${{ fromJson(needs.SetGlobalConstants.outputs.TARGET_DIRECTORIES) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Install black
+        run: pip install black
+      - name: Lint with black
+        run: black --check . || black .
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+  RunDetectSecrets:
+    needs: [CreateCache, SetGlobalConstants]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write   # for WIF
+    # strategy:
+    #   matrix:
+    #     target-directory: ${{ fromJson(needs.SetGlobalConstants.outputs.TARGET_DIRECTORIES) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Install
+        run: pip install detect-secrets
+      - name: Run detect-secrets scan
+        run: detect-secrets scan ${{ matrix.target-directory }} > secrets_output.json
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+
+  RunMypy:
+    needs: [CreateCache, SetGlobalConstants, RunFlake8, RunIsort, RunBlack, RunDetectSecrets]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      id-token: write   # for WIF
+    continue-on-error: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Install mypy
+        run: pip install mypy
+      - name: Run mypy
+        run: mypy src --no-incremental
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+  RunPyTest:
+    needs: [CreateCache, SetGlobalConstants, RunFlake8, RunIsort, RunBlack, RunDetectSecrets]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      issues: write
+      pull-requests: write
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: ${{ secrets.PROJECT_ID }}
+      LOCATION: ${{ secrets.LOCATION }}
+      STAGING_BUCKET: ${{ secrets.STAGING_BUCKET }}
+      DATA_STORE_ID: ${{ secrets.DATA_STORE_ID }}
+      LOCATION_ID: ${{ secrets.LOCATION_ID }}
+      INDEX_ID: ${{ secrets.INDEX_ID }}
+      ENDPOINT_ID: ${{ secrets.ENDPOINT_ID }}
+      GOOGLE_CLOUD_PROJECT: ${{ secrets.PROJECT_ID }}
+      # GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      GOOGLE_API_KEY:  ${{ secrets.GOOGLE_API_KEY }}
+      GOOGLE_CSE_ID:  ${{ secrets.GOOGLE_CSE_ID }}
+      # Satisfy import validation
+      ENVIRONMENT: ci
+      DB_USER: postgres
+      DB_PASS: postgres
+      DB_HOST: 127.0.0.1
+      DB_PORT: '5432'
+      DB_NAME: postgres
+      INSTANCE_CONNECTION_NAME: immpath-deployment:us-central1:dummy
+    outputs:
+      COVERAGE: ${{ steps.extract_coverage.outputs.COVERAGE }}
+      PASSING_TESTS_NUM: ${{ steps.extract_tests.outputs.PASSING_TESTS_NUM }}
+      MISSING_FILES: ${{ steps.extract_missing.outputs.MISSING_FILES }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup the Python dependencies
+        uses: ./.github/actions/setup_py_dependencies
+        with:
+          python-version: '${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          auth_method: wif
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+          ar_simple_index_url: https://asia-northeast1-python.pkg.dev/immpath-deployment/py-packages/simple/
+          target-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      # - name: Set up Google Cloud credentials
+      #   run: |
+      #     cat <<EOF > $HOME/gcloud-key.json
+      #     ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+      #     EOF
+      #     echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud-key.json" >> $GITHUB_ENV
+      - name: Install coverage
+        run: pip install coverage
+      - name: Run PyTest with coverage using coverage.py
+        run: |
+          coverage run -m pytest --junitxml=junit.xml -o junit_family=legacy ./src
+          coverage xml -o coverage.xml
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Extract coverage percentage from XML
+        id: extract_coverage
+        run: |
+          COVERAGE=$(grep -oP 'line-rate="\K[0-9\.]+' coverage.xml | head -n1)
+          COVERAGE_PERCENT=$(printf "%.0f" "$(echo "$COVERAGE * 100" | bc -l)")
+          echo "Extracted coverage: ${COVERAGE_PERCENT}%"
+          echo "COVERAGE=${COVERAGE_PERCENT}%" >> $GITHUB_OUTPUT
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Extract passing tests count from JUnit report
+        id: extract_tests
+        run: |
+          TOTAL=$(grep -oP '<testsuite [^>]* tests="\K[0-9]+' junit.xml | head -n 1)
+          FAILS=$(grep -oP 'failures="\K[0-9]+' junit.xml | head -n 1)
+          PASSING=$((TOTAL - FAILS))
+          echo "Passing tests: ${PASSING}"
+          echo "PASSING_TESTS_NUM=${PASSING}" >> $GITHUB_OUTPUT
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Extract Missing Coverage Files
+        id: extract_missing
+        run: |
+          # Using Python to parse the coverage.xml and list files (filenames) with less than 100% line coverage.
+          MISSING_FILES=$(python - <<'EOF'
+          import xml.etree.ElementTree as ET
+          tree = ET.parse("coverage.xml")
+          root = tree.getroot()
+          files = set()
+          # Loop through each package and class file
+          for package in root.findall(".//package"):
+              for cls in package.findall(".//class"):
+                  # If the class’s line-rate is not 1.0 then mark the file as missing full coverage.
+                  if float(cls.get("line-rate", 1)) < 1.0:
+                      files.add(cls.get("filename"))
+          print(",".join(sorted(files)))
+          EOF
+          )
+          echo "Missing files: ${MISSING_FILES}"
+          echo "MISSING_FILES=${MISSING_FILES}" >> $GITHUB_OUTPUT
+        working-directory: ${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}
+      - name: Comment on PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const coverage = '${{ steps.extract_coverage.outputs.COVERAGE }}';
+            const passingTests = '${{ steps.extract_tests.outputs.PASSING_TESTS_NUM }}';
+            const missingFiles = '${{ steps.extract_missing.outputs.MISSING_FILES }}';
+            
+            // Get previous comments to check for existing coverage comment
+            const comments = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            
+            let previousCoverage = null;
+            for (const comment of comments.data.reverse()) {
+              if (comment.body.includes('Coverage:')) {
+                const match = comment.body.match(/Coverage: (\d+%)/);
+                if (match && match[1]) {
+                  previousCoverage = match[1];
+                  break;
+                }
+              }
+            }
+            
+            // Only comment if coverage has changed or no previous coverage comment exists
+            if (!previousCoverage || previousCoverage !== coverage) {
+              let body = `## Test Results Summary
+
+              Tests Passed: ${passingTests}
+              Coverage: ${coverage}
+              `;
+              
+              if (missingFiles.trim()) {
+                body += `Files missing full coverage:
+                ${missingFiles.split(',').map(file => `- ${file}`).join('\n')}\n`;
+              }
+
+              body += `[View full test results in the Actions tab](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})`;
+              
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+            }
+
+  UpdateReadmeBadgesToPassingStatus:
+    needs: [
+      SetGlobalConstants,
+      UpdateReadmeBadgesToCheckingStatus,
+      RunFlake8,
+      RunIsort,
+      RunBlack,
+      RunDetectSecrets,
+      RunMypy,
+      RunPyTest
+    ]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    steps:
+      - name: Update each lint badge status
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_LINTS_BADGE_LABEL }}'
+          status: 'flake8 | mypy | Pyright | numdoclint'
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Echo the passing unit tests number value
+        run: echo ${{ needs.RunTestsAndSaveCoverageAndPassingNum.outputs.COVERAGE }}
+      - name: Update tests line coverage
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: unit_tests_coverage
+          label: 'unit tests coverage'
+          status: ${{ needs.RunTestsAndSaveCoverageAndPassingNum.outputs.COVERAGE }}
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Echo the passing unit tests number value
+        run: echo ${{ needs.RunTestsAndSaveCoverageAndPassingNum.outputs.PASSING_TESTS_NUM }}
+      - name: Update the passing unit tests number
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: passing_unit_tests_num
+          label: 'passing unit tests number'
+          status: ${{ needs.RunTestsAndSaveCoverageAndPassingNum.outputs.PASSING_TESTS_NUM }}
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update the passsing doctests number
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: passing_doctests_num
+          label: 'passing doctests number'
+          status: ${{ needs.RunDocTest.outputs.PASSING_TESTS_NUM }}
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update the passing unit tests Python versions status
+        uses: RubbaBoy/BYOB@v1.3.0
+        with:
+          name: '${{ needs.SetGlobalConstants.outputs.PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_NAME }}'
+          label: '${{ needs.SetGlobalConstants.outputs.PASSING_UNIT_TEST_PYTHON_VERSIONS_BADGE_LABEL }}'
+          status: '${{ needs.SetGlobalConstants.outputs.PYTHON_38_VERSION }} | ${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }} | ${{ needs.SetGlobalConstants.outputs.PYTHON_310_VERSION }} | ${{ needs.SetGlobalConstants.outputs.PYTHON_311_VERSION }} | ${{ needs.SetGlobalConstants.outputs.PYTHON_312_VERSION }}'
+          color: ${{ needs.SetGlobalConstants.outputs.PASSING_BADGE_COLOR }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
