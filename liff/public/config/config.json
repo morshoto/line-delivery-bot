@@ -1,0 +1,8 @@
+{
+  "liffId": "YOUR_LIFF_ID",
+  "apiBase": "",
+  "useSharedToken": false,
+  "sharedToken": "",
+  "oidcEnabled": false,
+  "env": "dev"
+}
