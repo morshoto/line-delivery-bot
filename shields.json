@@ -1,1 +1,1 @@
-{"go_passing_lints":{"label":"go passing lints","status":"gofmt | govet","color":"0088FF"},"go_unit_tests_coverage":{"label":"go unit tests coverage","status":"80.6%","color":"0088FF"},"go_versions":{"label":"Go versions","status":"1.22.x","color":"0088FF"}}
+{"go_passing_lints":{"label":"go passing lints","status":"gofmt | govet","color":"0088FF"},"go_unit_tests_coverage":{"label":"go unit tests coverage","status":"72.8%","color":"0088FF"},"go_versions":{"label":"Go versions","status":"1.22.x","color":"0088FF"}}
