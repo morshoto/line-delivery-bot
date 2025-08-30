@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 1
     outputs:
-      APP_NAME: "ip_ellis_scraper"
+      APP_NAME: "HakoPit"
       DEVELOP_BRANCH: "dev/main"
       MAIN_BRANCH: "main"
       BOT_NAME: "github-actions[bot]"
