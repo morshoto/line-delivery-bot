@@ -1,23 +1,19 @@
 # delivery-bot server (Go)
 
-- GET `/health` -> 200 "ok"
-- env:
-  - `LINE_CHANNEL_SECRET` (later)
-  - `LINE_CHANNEL_ACCESS_TOKEN` (later)
-  - `SHARED_TOKEN` (optional)
-
-## Local run
+Run locally
 
 ```bash
-cd server
-# First time: resolve modules
+# Fetch dependencies (generates go.sum)
 go mod tidy
-# Run server
+# Start the server
 go run ./cmd/server
-# -> listening on :10000
-# Health check
-curl -i http://localhost:10000/health
 ```
 
-> Note: `go mod tidy` needs network to fetch dependencies.
+Testing on local
 
+```bash
+# Run tests using go
+go test ./... -v
+# Run tests using gotestfmt
+go test -json ./... -count=1 | gotestfmt -hide=empty-packages
+```
