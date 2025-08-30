@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      TARGET_DIRECTORY: 'server'
+      TARGET_DIRECTORY: 'backend'
       GO_122_VERSION: '1.22.x'
       CHECKING_BADGE_COLOR: FFAA00
       PASSING_BADGE_COLOR: 0088FF
