@@ -5,59 +5,55 @@
 ![LINE Messaging API Badge](https://img.shields.io/badge/LINE%20Messaging%20API-00C300?logo=line&logoColor=fff&style=for-the-badge)
 ![Postman Badge](https://img.shields.io/badge/Postman-FF6C37?logo=postman&logoColor=fff&style=for-the-badge)
 
-## Description
+小さな Go サービスです。QR で読み取った荷物情報を解析し、LINE グループへ分かりやすく通知します。重複スキャンは 30 分間抑止し、LINE のコールバックも署名を検証して受け付けます。
 
-Small Go service that accepts QR scan payloads, parses common courier/waybill strings, de‑duplicates repeat scans, and pushes formatted messages to a LINE group. Includes a callback endpoint that verifies LINE signatures.
+## 特徴
+- 主要な宅配会社の伝票番号を解析
+- 同じ伝票番号の再スキャンを検知して通知を抑制
+- LINE Messaging API を使ってグループへメッセージを送信
+- Postman コレクションを同梱
 
-## Branch Naming Rules
+## 動作環境
+- Go 1.22 以上
 
-| Branch Name          | Description            | Supplemental |
-| -------------------- | ---------------------- | ------------ |
-| main                 | latest release         | CD action    |
-| dev/main             | latest for development | CI/CD action |
-| dev/{module name}    | development branch     | CI/CD action |
-| hotfix/{module name} | hotfix branch          |              |
-| sandbox/{anything}   | test code, etc.        |              |
+### 必要な環境変数
+| 変数 | 説明 |
+| ---- | ---- |
+| `LINE_CHANNEL_SECRET` | `/callback` の署名検証に使用 |
+| `LINE_CHANNEL_ACCESS_TOKEN` | メッセージ送信に使用するトークン |
+| `SHARED_TOKEN` (任意) | `/api/scan` を呼び出す際の共有ヘッダトークン |
+| `PORT` (任意) | サーバーのポート番号。デフォルト `10000` |
 
--   Work is branched from each latest branch.
--   Delete working branches after merging.
--   Review as much as possible (have someone do it for you).
--   Build, deploy, etc. are discussed separately.
-
-## Usage
-
-### Backend
-
-**Prerequisites**
-
--   Go 1.22+
-
-**Environment variables**
-
--   `LINE_CHANNEL_SECRET`: for `/callback` signature verification
--   `LINE_CHANNEL_ACCESS_TOKEN`: Messaging API token to push messages
--   `SHARED_TOKEN` (optional): shared header token required by `/api/scan`
--   `PORT` (optional): default `10000`
-
-Run locally
-
+## ローカルでの実行手順
 ```bash
-# From repository root
+# リポジトリのルートから
 cd backend
-# Fetch dependencies (generates go.sum)
+# 依存関係の取得
 go mod tidy
-# Start the server
+# サーバーを起動
 go run ./cmd/server
 ```
 
-**Notes**
+## ロギングと挙動
+- `/api/scan` は `{event, group_id, carrier, tracking_no, dedupe}` を含む JSON を出力します。
+- 重複検出は `carrier+tracking_no` をキーにメモリ上で 30 分保持し、再スキャン時はメッセージに `（再スキャン）` を付加します。
+- `LINE_CHANNEL_ACCESS_TOKEN` が未設定の場合は送信をスキップし `push_skip` をログに記録します。
+- プロキシ環境では `go env -w GOPROXY=https://proxy.golang.org,direct` を設定してください。
 
--   `/api/scan` logs structured JSON like: `{event:scan, group_id, carrier, tracking_no, dedupe}`
--   Dedupe: in‑memory TTL (30m) keyed by `carrier+tracking_no`; duplicates append `（再スキャン）` to the message.
--   If `LINE_CHANNEL_ACCESS_TOKEN` is missing, the server skips push and logs `push_skip`.
--   Behind a proxy: `go env -w GOPROXY=https://proxy.golang.org,direct`
+## Postman
+- コレクション: `backend/data/postman/line-delivery-bot.postman_collection.json`
+- 環境: `backend/data/postman/line-delivery-bot.postman_environment.json`
 
-**Postman**
+## ブランチ運用ルール
+| ブランチ名 | 役割 | 補足 |
+| ---------- | ---- | ---- |
+| `main` | 最新リリース | CD |
+| `dev/main` | 開発の最新 | CI/CD |
+| `dev/{module}` | 機能開発用 | CI/CD |
+| `hotfix/{module}` | ホットフィックス用 | |
+| `sandbox/{anything}` | 試験コードなど | |
 
--   Collection: `backend/data/postman/line-delivery-bot.postman_collection.json`
--   Environment: `backend/data/postman/line-delivery-bot.postman_environment.json`
+- 作業は各ブランチの最新から切り出します。
+- マージ後は作業ブランチを削除します。
+- 可能な限りレビューを行います。
+- ビルドやデプロイに関しては別途相談します。
