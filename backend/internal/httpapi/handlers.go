@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+    "crypto/sha256"
+    "encoding/hex"
     "encoding/json"
     "io"
     "net/http"
@@ -61,6 +63,11 @@ func (h *Handler) handleScan() http.HandlerFunc {
         }
         carrier, tracking := h.Parser.Parse(req.QRText)
         key := carrier + ":" + tracking
+        if tracking == "" {
+            // Avoid global collision for unknown / no-tracking cases
+            sum := sha256.Sum256([]byte(req.QRText))
+            key = carrier + ":" + hex.EncodeToString(sum[:8])
+        }
         isDup := h.Dedupe.Seen(key)
 
         // assemble message
@@ -122,4 +129,3 @@ func (h *Handler) handleCallback() http.HandlerFunc {
         w.Write([]byte("ok"))
     }
 }
-
