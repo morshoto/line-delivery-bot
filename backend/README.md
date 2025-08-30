@@ -1,23 +1,33 @@
 # delivery-bot server (Go)
 
-- GET `/health` -> 200 "ok"
-- env:
-  - `LINE_CHANNEL_SECRET` (later)
-  - `LINE_CHANNEL_ACCESS_TOKEN` (later)
-  - `SHARED_TOKEN` (optional)
+- GET `/health` -> 200 `ok`
+- POST `/api/scan` -> push message to group
+- POST `/callback` -> verify LINE signature only
 
-## Local run
+Env vars
+- `LINE_CHANNEL_SECRET`: for `/callback` signature verify (Phase 1: verify-only)
+- `LINE_CHANNEL_ACCESS_TOKEN`: Messaging API token to push messages
+- `SHARED_TOKEN` (optional): Shared header token to accept `/api/scan`
+- `PORT` (optional): default `10000`
 
-```bash
+Run locally
+```
 cd server
-# First time: resolve modules
-go mod tidy
-# Run server
 go run ./cmd/server
-# -> listening on :10000
-# Health check
-curl -i http://localhost:10000/health
 ```
 
-> Note: `go mod tidy` needs network to fetch dependencies.
+Test
+```
+curl -sS localhost:10000/health
+
+curl -sS -X POST localhost:10000/api/scan \
+  -H 'Content-Type: application/json' \
+  -H "X-Shared-Token: $SHARED_TOKEN" \
+  -d '{"group_id":"YOUR_GROUP_ID","qr_text":"https://example.com/kuroneko/123456789012","display_name":"Tester"}'
+```
+
+Notes
+- `/api/scan` logs structured JSON like: `{event:scan, group_id, carrier, tracking_no, dedupe}`
+- Dedupe: in-memory TTL (30m) by key `carrier+tracking_no`; duplicates append `（再スキャン）` to message.
+- If `LINE_CHANNEL_ACCESS_TOKEN` is missing, server skips push and logs `push_skip`.
 
