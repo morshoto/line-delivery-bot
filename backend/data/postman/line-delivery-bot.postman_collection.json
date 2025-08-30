@@ -1,0 +1,136 @@
+{
+  "info": {
+    "_postman_id": "c5e8c2b0-3c27-4a0a-8e3a-0f3a92a0d001",
+    "name": "line-delivery-bot (backend)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "description": "Postman collection for line-delivery-bot backend endpoints."
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "{{baseUrl}}/health",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "health"
+          ]
+        }
+      },
+      "response": [],
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('Status code is 200', function () {",
+              "  pm.response.to.have.status(200);",
+              "});",
+              "pm.test('Body contains ok', function () {",
+              "  pm.expect(pm.response.text()).to.include('ok');",
+              "});"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Scan (POST /api/scan)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "X-Shared-Token",
+            "value": "{{sharedToken}}",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"group_id\": \"{{groupId}}\",\n  \"qr_text\": \"{{qrText}}\",\n  \"display_name\": \"{{displayName}}\"\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/api/scan",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "api",
+            "scan"
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "Callback (POST /callback)",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          },
+          {
+            "key": "X-Line-Signature",
+            "value": "{{lineSignature}}",
+            "type": "text",
+            "description": "HMAC-SHA256 signature of the request body using LINE channel secret"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"events\": []\n}"
+        },
+        "url": {
+          "raw": "{{baseUrl}}/callback",
+          "host": [
+            "{{baseUrl}}"
+          ],
+          "path": [
+            "callback"
+          ]
+        }
+      },
+      "response": []
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:10000"
+    },
+    {
+      "key": "sharedToken",
+      "value": ""
+    },
+    {
+      "key": "groupId",
+      "value": "YOUR_GROUP_ID"
+    },
+    {
+      "key": "qrText",
+      "value": "https://example.com/kuroneko/123456789012"
+    },
+    {
+      "key": "displayName",
+      "value": "Tester"
+    },
+    {
+      "key": "lineSignature",
+      "value": "dummy-signature"
+    }
+  ]
+}
+

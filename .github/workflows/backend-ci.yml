@@ -1,9 +1,9 @@
-name: Server CI (Go)
+name: Backend CI
 
 on:
   pull_request:
     paths:
-      - 'server/**'
+      - 'backend/**'
 
 concurrency:
   group: ci-go-${{ github.ref }}
@@ -14,7 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
-      TARGET_DIRECTORY: 'server'
+      TARGET_DIRECTORY: 'backend'
       GO_122_VERSION: '1.22.x'
       CHECKING_BADGE_COLOR: FFAA00
       PASSING_BADGE_COLOR: 0088FF
@@ -51,7 +51,7 @@ jobs:
         with:
           go-version: ${{ needs.SetGlobalConstants.outputs.GO_122_VERSION }}
           cache: true
-      - name: Run gofmt (autofix)
+      - name: Run gofmt
         shell: bash
         run: |
           cd "${{ needs.SetGlobalConstants.outputs.TARGET_DIRECTORY }}"
@@ -60,9 +60,8 @@ jobs:
             echo "Reformatting:"; echo "$CHANGED"
             gofmt -w .
           fi
-
   RunGoVet:
-    needs: [SetGlobalConstants, RunGoFmt]
+    needs: [SetGlobalConstants]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
