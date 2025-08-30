@@ -51,6 +51,8 @@ func (h *Handler) handleScan() http.HandlerFunc {
             return
         }
         var req ScanRequest
+        // Cap request body to 1MB to avoid unbounded reads
+        r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
         dec := json.NewDecoder(r.Body)
         dec.DisallowUnknownFields()
         if err := dec.Decode(&req); err != nil {
