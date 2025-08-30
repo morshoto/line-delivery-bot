@@ -1,8 +1,12 @@
 package main
 
 import (
+    "context"
     "log"
     "net/http"
+    "os"
+    "os/signal"
+    "syscall"
     "time"
 
     "github.com/go-chi/chi/v5"
@@ -55,8 +59,36 @@ func main() {
     handler.Register(r)
 
     addr := ":" + cfg.Port
-    log.Printf("listening on %s", addr)
-    if err := http.ListenAndServe(addr, r); err != nil {
-        log.Fatal(err)
+
+    srv := &http.Server{
+        Addr:         addr,
+        Handler:      r,
+        ReadTimeout:  15 * time.Second,
+        WriteTimeout: 15 * time.Second,
+        IdleTimeout:  60 * time.Second,
     }
+
+    // Start server in background
+    go func() {
+        log.Printf("listening on %s", addr)
+        if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+            log.Fatalf("server error: %v", err)
+        }
+    }()
+
+    // Handle graceful shutdown on SIGINT/SIGTERM
+    stop := make(chan os.Signal, 1)
+    signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
+    <-stop
+    log.Printf("shutdown signal received, draining...")
+
+    ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+    defer cancel()
+    if err := srv.Shutdown(ctx); err != nil {
+        log.Printf("graceful shutdown failed: %v", err)
+        if cerr := srv.Close(); cerr != nil {
+            log.Printf("force close failed: %v", cerr)
+        }
+    }
+    log.Printf("server stopped")
 }

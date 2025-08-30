@@ -4,6 +4,7 @@ import (
     "bytes"
     "encoding/json"
     "errors"
+    "fmt"
     "io"
     "net/http"
     "time"
@@ -75,5 +76,14 @@ type HTTPError struct {
     Body       string
 }
 
-func (e *HTTPError) Error() string { return http.StatusText(e.StatusCode) }
-
+func (e *HTTPError) Error() string {
+    if e == nil {
+        return "<nil>"
+    }
+    // include code and a short body excerpt for observability
+    msg := e.Body
+    if len(msg) > 200 {
+        msg = msg[:200] + "…"
+    }
+    return fmt.Sprintf("%d %s: %s", e.StatusCode, http.StatusText(e.StatusCode), msg)
+}
