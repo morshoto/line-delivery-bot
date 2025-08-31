@@ -10,14 +10,13 @@ export async function initLiff(cfg: AppConfig) {
 
 export async function getGroupIdOrThrow(): Promise<string> {
   if (!liff.isInClient()) {
-    const env = import.meta.env as any;
-    if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
-      return env.VITE_DEV_GROUP_ID || 'dev-group-id';
+    if (String(process.env.NEXT_PUBLIC_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+      return process.env.NEXT_PUBLIC_DEV_GROUP_ID || 'dev-group-id';
     }
     throw new Error('LINEアプリ内から開いてください');
   }
   const ctx = liff.getContext();
-  if (ctx.type !== 'group' || !ctx.groupId) {
+  if (!ctx || ctx.type !== 'group' || !ctx.groupId) {
     throw new Error('グループから開いてください');
   }
   return ctx.groupId;
@@ -26,11 +25,10 @@ export async function getGroupIdOrThrow(): Promise<string> {
 export async function getProfileSafe() {
   try {
     if (!liff.isInClient()) {
-      const env = import.meta.env as any;
-      if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+      if (String(process.env.NEXT_PUBLIC_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
         return {
-          displayName: env.VITE_DEV_DISPLAY_NAME || 'Dev User',
-          userId: env.VITE_DEV_USER_ID || 'U-dev-user',
+          displayName: process.env.NEXT_PUBLIC_DEV_DISPLAY_NAME || 'Dev User',
+          userId: process.env.NEXT_PUBLIC_DEV_USER_ID || 'U-dev-user',
         };
       }
     }
@@ -44,8 +42,7 @@ export async function getProfileSafe() {
 export async function getAuthHeader(cfg: AppConfig): Promise<Record<string,string>> {
   if (cfg.oidcEnabled) {
     if (!liff.isInClient()) {
-      const env = import.meta.env as any;
-      if (String(env.VITE_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
+      if (String(process.env.NEXT_PUBLIC_LIFF_BROWSER_DEV).toLowerCase() === 'true') {
         // ブラウザ開発時は ID トークンは付与しない
         return {};
       }

@@ -17,17 +17,17 @@ function toBool(v: unknown): boolean {
 
 export async function loadConfig(): Promise<AppConfig> {
   if (cache) return cache;
-  const env = import.meta.env as any;
+  // In Next.js client code, only NEXT_PUBLIC_* variables are inlined at build time.
   const cfg: AppConfig = {
-    liffId: env.VITE_LIFF_ID ?? '',
-    apiBase: env.VITE_API_BASE ?? '',
-    useSharedToken: toBool(env.VITE_USE_SHARED_TOKEN),
-    sharedToken: env.VITE_SHARED_TOKEN ?? '',
-    oidcEnabled: toBool(env.VITE_OIDC_ENABLED),
-    env: (env.VITE_APP_ENV ?? env.MODE ?? 'dev') as 'prod' | 'stg' | 'dev',
+    liffId: process.env.NEXT_PUBLIC_LIFF_ID ?? '',
+    apiBase: process.env.NEXT_PUBLIC_API_BASE ?? '',
+    useSharedToken: toBool(process.env.NEXT_PUBLIC_USE_SHARED_TOKEN),
+    sharedToken: process.env.NEXT_PUBLIC_SHARED_TOKEN ?? '',
+    oidcEnabled: toBool(process.env.NEXT_PUBLIC_OIDC_ENABLED),
+    env: (process.env.NEXT_PUBLIC_APP_ENV ?? 'dev') as 'prod' | 'stg' | 'dev',
   };
   if (!cfg.liffId || cfg.liffId === 'YOUR_LIFF_ID') {
-    throw new Error('VITE_LIFF_ID が未設定です。liff/.env などに正しい LIFF ID を設定してください');
+    throw new Error('LIFF ID が未設定です。liff/.env などに正しい LIFF ID を設定してください');
   }
   cache = cfg;
   return cache;
