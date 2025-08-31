@@ -1,33 +1,33 @@
-# LIFF App (React + TypeScript)
+# LIFF App (Next.js + TypeScript)
 
 ## Available Scripts
 
 - `npm run dev` – start the development server.
 - `npm test` – run unit tests.
 - `npm run build` – build the app for production.
-- `npm run preview` – preview the built app.
+- `npm run start` – start the production server (after build).
 
 ## Configuration
 
-Use Vite environment variables via `.env` files (do not commit secrets):
+Use Next.js environment variables via `.env` files (do not commit secrets). In client-side code, only variables prefixed with `NEXT_PUBLIC_` are exposed.
 
 1. Copy `liff/.env.example` to `liff/.env` (or `.env.local`) and fill values
 
 Required variables:
 
-- `VITE_LIFF_ID`: Your LIFF ID
-- `VITE_API_BASE`: Backend base URL (optional)
-- `VITE_USE_SHARED_TOKEN`: `true`/`false`
-- `VITE_SHARED_TOKEN`: Shared token value (optional)
-- `VITE_OIDC_ENABLED`: `true`/`false`
-- `VITE_APP_ENV`: `prod` | `stg` | `dev` (default: `dev`)
+- `NEXT_PUBLIC_LIFF_ID`: Your LIFF ID
+- `NEXT_PUBLIC_API_BASE`: Backend base URL (optional)
+- `NEXT_PUBLIC_USE_SHARED_TOKEN`: `true`/`false`
+- `NEXT_PUBLIC_SHARED_TOKEN`: Shared token value (optional)
+- `NEXT_PUBLIC_OIDC_ENABLED`: `true`/`false`
+- `NEXT_PUBLIC_APP_ENV`: `prod` | `stg` | `dev` (default: `dev`)
 
 Optional for browser-only development:
 
-- `VITE_LIFF_BROWSER_DEV`: `true` to bypass in-app requirement and use stubbed context/profile
-- `VITE_DEV_GROUP_ID`: stub groupId (default: `dev-group-id`)
-- `VITE_DEV_USER_ID`: stub userId (default: `U-dev-user`)
-- `VITE_DEV_DISPLAY_NAME`: stub displayName (default: `Dev User`)
+- `NEXT_PUBLIC_LIFF_BROWSER_DEV`: `true` to bypass in-app requirement and use stubbed context/profile
+- `NEXT_PUBLIC_DEV_GROUP_ID`: stub groupId (default: `dev-group-id`)
+- `NEXT_PUBLIC_DEV_USER_ID`: stub userId (default: `U-dev-user`)
+- `NEXT_PUBLIC_DEV_DISPLAY_NAME`: stub displayName (default: `Dev User`)
 
 ## Development
 
