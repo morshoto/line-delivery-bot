@@ -1,18 +1,33 @@
 {
   "name": "liff",
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "dev": "vite",
-    "test": "vitest",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "dev": "next dev",
+    "dev:mock": "pnpm dlx tsx ./src/mocks/server.ts",
+    "build": "next build",
+    "start": "pnpm run dev:mock | next start",
+    "lint": "eslint . || true",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "check:format": "prettier --check .",
+    "check:knip": "knip --reporter markdown",
+    "check:type": "tsc --noEmit",
+    "check:all": "pnpm run lint && pnpm run check:format && pnpm run check:type && pnpm run check:knip",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "preinstall": "npx only-allow pnpm",
+    "storybook": "storybook dev -p 6006"
   },
   "dependencies": {
     "@line/liff": "2.27.1",
-    "react": "19.1.1",
-    "react-dom": "19.1.1"
+    "next": "latest",
+    "react": "18.2.0",
+    "react-dom": "18.2.0"
   },
   "devDependencies": {
+    "@types/node": "^20.14.10",
+    "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.8.0",
     "@testing-library/react": "^16.3.0",
     "@types/react": "19.1.12",
