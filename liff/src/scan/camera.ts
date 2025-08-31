@@ -1,7 +1,9 @@
 export async function startCamera() {
-  return navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+  return navigator.mediaDevices.getUserMedia({
+    video: { facingMode: "environment" },
+  });
 }
 
 export function stopCamera(stream: MediaStream) {
-  stream.getTracks().forEach(t => t.stop());
+  stream.getTracks().forEach((t) => t.stop());
 }

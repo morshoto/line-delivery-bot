@@ -8,9 +8,10 @@
 - `npm run preview` – preview the built app.
 
 ## Configuration
+
 Use Vite environment variables via `.env` files (do not commit secrets):
 
-1) Copy `liff/.env.example` to `liff/.env` (or `.env.local`) and fill values
+1. Copy `liff/.env.example` to `liff/.env` (or `.env.local`) and fill values
 
 Required variables:
 

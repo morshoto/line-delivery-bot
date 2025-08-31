@@ -1,5 +1,5 @@
 const ctx: any = self;
-ctx.importScripts('/vendor/zxing/zxing.min.js');
+ctx.importScripts("/vendor/zxing/zxing.min.js");
 
 ctx.onmessage = () => {
   // placeholder worker
