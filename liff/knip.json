@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "ignore": [
+    "src/scan/**",
+    "src/util/time.ts",
+    "src/workers/zxing-worker.ts"
+  ],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css",
+    "eslint",
+    "prettier",
+    "storybook",
+    "only-allow"
+  ],
+  "ignoreBinaries": [
+    "eslint",
+    "prettier",
+    "storybook",
+    "only-allow"
+  ]
+}

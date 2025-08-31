@@ -1,0 +1,7 @@
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' https://static.line-scdn.net; connect-src 'self' https://your-render-app.onrender.com; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'
+  Permissions-Policy: camera=(self)
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Content-Type-Options: nosniff
+  Cache-Control: public, max-age=600
+*/
