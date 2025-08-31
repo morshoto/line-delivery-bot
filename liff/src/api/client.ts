@@ -2,7 +2,7 @@ import { cleanse, validate } from "./sanitize";
 import { getAuthHeader } from "../services/liff";
 import type { AppConfig } from "../services/env";
 
-export type ScanPayload = {
+type ScanPayload = {
   groupId: string;
   qrText: string;
   displayName: string;

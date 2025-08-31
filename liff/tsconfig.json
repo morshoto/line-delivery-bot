@@ -15,7 +15,7 @@
     "isolatedModules": true,
     "noEmit": true,
     "jsx": "preserve",
-    "types": ["vitest", "node", "next", "next/image-types"],
+    "types": ["vitest", "node", "next", "next/image-types/global"],
     "incremental": true,
     "plugins": [
       {

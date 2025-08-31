@@ -16,7 +16,7 @@ export function showToast(message: string, timeout = 2000) {
   setTimeout(() => div.remove(), timeout);
 }
 
-export function renderDialog(node: ReactNode) {
+function renderDialog(node: ReactNode) {
   const container =
     document.getElementById("modal") ||
     document.body.appendChild(document.createElement("div"));
