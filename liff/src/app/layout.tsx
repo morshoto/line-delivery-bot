@@ -3,6 +3,7 @@ export const metadata = {
   description: 'LINE LIFF app',
 };
 
+import '../styles/globals.css';
 import '../styles/main.css';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -12,4 +13,3 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     </html>
   );
 }
-
